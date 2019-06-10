@@ -60,7 +60,7 @@ app.use('/graphql', graphqlHTTP({
   graphiql: true
 }));
 
-mongoose.connect(`mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@graphql-wgxh6.mongodb.net/test?retryWrites=true&w=majority`)
+mongoose.connect(`mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@graphql-wgxh6.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`)
   .then(()=>{
     app.listen(3000);
   })
