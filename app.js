@@ -5,11 +5,11 @@ const mongoose = require('mongoose');
 const graphqlHTTP = require('express-graphql');
 const { buildSchema } = require('graphql');
 
+const Event = require('./models/event');
+
 const app = express();
 
 app.use(bodyParser.json());
-
-let events = [];
 
 app.use('/graphql', graphqlHTTP({
   schema: buildSchema(`
@@ -24,7 +24,8 @@ app.use('/graphql', graphqlHTTP({
       input EventInput {
         title: String!
         description: String!
-        price: Float!
+        price: Float!,
+        date: String!
       }
 
       type RootQuery {
@@ -42,18 +43,32 @@ app.use('/graphql', graphqlHTTP({
     `),
   rootValue: {
     events: () => {
-      return events;
+      return Event.find()
+        .then(events=>{
+          return events.map(event=>{
+            return {...event._doc, _id: event._doc._id.toString()};
+          });
+        })
+        .catch(err=>{
+          console.log(err);
+          throw err;
+        })
     },
     createEvent: (args) => {
-      let event = {
-        _id: Math.random().toString(),
+      let event = new Event({
         title: args.eventInput.title,
         description: args.eventInput.description,
-        date: new Date().toISOString(),
+        date: new Date(args.eventInput.date),
         price: +args.eventInput.price
-      }
-      events.push(event);
-      return event;
+      });
+      return event.save()
+        .then(result=>{
+          return {...result._doc, _id: event._doc._id.toString()};
+        })
+        .catch(err=>{
+          console.log(err);
+          throw err;
+        })
     },
 
   },
