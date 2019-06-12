@@ -56,28 +56,39 @@ app.use('/graphql', graphqlHTTP({
       }
     `),
   rootValue: {
-    events: () => {
-      return Event.find()
-        .then(events=>{
-          return events.map(event=>{
-            return {...event._doc, _id: event._doc._id.toString()};
-          });
-        })
-        .catch(err=>{
-          console.log(err);
-          throw err;
-        })
+    events: () => { 
+      try {
+        const events = Event.find();
+        return events.map(event => {
+          return { ...event._doc, _id: event._doc._id.toString() };
+        });
+      }
+      catch (err) {
+        console.log(err);
+        throw err;
+      }
     },
     createEvent: (args) => {
       let event = new Event({
         title: args.eventInput.title,
         description: args.eventInput.description,
         date: new Date(args.eventInput.date),
-        price: +args.eventInput.price
+        price: +args.eventInput.price,
+        creator: '5d012164e4465f163851b9f5'
       });
+      
+      let createdEvent;
       return event.save()
         .then(result=>{
-          return {...result._doc, _id: event._doc._id.toString()};
+          createdEvent = {...result._doc, _id: event._doc._id.toString()};
+          return User.findById('5d012164e4465f163851b9f5')
+        })
+        .then(user=>{
+          user.createdEvents.push(event);
+          return user.save();
+        })
+        .then(user=>{
+          return createdEvent;
         })
         .catch(err=>{
           console.log(err);
@@ -85,7 +96,13 @@ app.use('/graphql', graphqlHTTP({
         })
     },
     createUser: (args) => {
-      return bcrpyt.hash(args.userInput.password, 12)
+      return User.findOne({email: args.userInput.email})
+        .then(user=>{
+          if(user){
+            throw new Error("User already exists");
+          }
+          return bcrpyt.hash(args.userInput.password, 12)
+        })
         .then(hashed=>{
           let user = new User({
             email: args.userInput.email,
@@ -94,19 +111,20 @@ app.use('/graphql', graphqlHTTP({
           return user.save();
         })
         .then(result=>{
+          console.log(result);
           return {...result._doc, password: null, _id: result.id}
         })
         .catch(err=>{
           throw err
-        });
-      
+        }); 
+
     }
 
   },
   graphiql: true
 }));
 
-mongoose.connect(`mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@graphql-wgxh6.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`)
+mongoose.connect(`mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0-bgzbp.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`)
   .then(()=>{
     app.listen(3000);
   })
